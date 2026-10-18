@@ -1,0 +1,823 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#318647">
+<title>四つ葉のクローバー探し</title>
+<style>
+:root {
+  --dark: #17562f;
+  --green: #2c8b48;
+  --paper: #fffdf1;
+  --gold: #f7d878;
+}
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  color: var(--dark);
+  font-family: system-ui, "Yu Gothic", Meiryo, sans-serif;
+  background:
+    radial-gradient(ellipse at 10% 0%, #d4f2a4, transparent 40%),
+    linear-gradient(145deg, #b4df86, #e3f3c5 45%, #8bc96f);
+}
+
+button { font: inherit; }
+
+.app {
+  width: min(100%, 920px);
+  margin: auto;
+  padding: 18px 12px 30px;
+}
+
+header {
+  text-align: center;
+  padding: 22px 10px 18px;
+  margin-bottom: 12px;
+  border: 3px solid #fff8d8;
+  border-radius: 24px;
+  background: linear-gradient(120deg, #fffdf1, #fff4ce);
+  box-shadow: 0 5px 0 #3c8c4730;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(24px, 5vw, 39px);
+  letter-spacing: .04em;
+}
+
+.subtitle {
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.stat {
+  padding: 13px 5px;
+  min-width: 0;
+  text-align: center;
+  border: 2px solid #ffffffd9;
+  border-radius: 17px;
+  background: #fffdf0eF;
+  box-shadow: 0 4px 12px #174b2910;
+}
+
+.stat-label {
+  display: block;
+  font-size: 11px;
+  color: #608064;
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  display: block;
+  font-size: clamp(15px, 3.7vw, 23px);
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+#message {
+  text-align: center;
+  min-height: 25px;
+  margin: 10px 0;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+#board {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 440px;
+  border: 5px solid #f7ffdf;
+  border-radius: 23px;
+  background:
+    radial-gradient(ellipse at 15% 10%, #b9eb6b40, transparent 35%),
+    radial-gradient(ellipse at 85% 75%, #064b2835, transparent 45%),
+    repeating-linear-gradient(112deg, transparent 0 9px, #ffffff08 9px 11px),
+    linear-gradient(140deg, #51b14a, #27843d 55%, #389749);
+  box-shadow:
+    0 9px 24px #174b2928,
+    inset 0 0 30px #0c592820;
+}
+
+#grass {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: .75;
+  background-image:
+    radial-gradient(#d6f5a0 1px, transparent 2px),
+    radial-gradient(#c3eb8b 1px, transparent 2px),
+    radial-gradient(#1c7138 1px, transparent 2px);
+  background-size: 31px 37px, 43px 47px, 29px 33px;
+}
+
+#field {
+  display: grid;
+  align-content: start;
+  padding: 7px;
+  width: 100%;
+  gap: 0;
+}
+
+.clover {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+}
+
+.clover svg {
+  display: block;
+  width: 90%;
+  height: 90%;
+  overflow: visible;
+  pointer-events: none;
+  transform: rotate(var(--angle));
+  transition: transform .12s;
+}
+
+.clover:hover svg {
+  transform: rotate(var(--angle)) scale(1.12);
+}
+
+.clover:focus-visible {
+  outline: 2px solid #fff4a0;
+  outline-offset: -2px;
+}
+
+.clover.found {
+  z-index: 5;
+  animation: found .55s ease-out;
+}
+
+.clover.found svg {
+  filter: drop-shadow(0 0 7px #fff7a0);
+}
+
+.clover.hinting svg {
+  filter: drop-shadow(0 0 6px white);
+  animation: hint-pulse .35s alternate 4;
+}
+
+@keyframes found {
+  40% { transform: scale(1.8); }
+  70% { transform: scale(1.4); }
+}
+
+@keyframes hint-pulse {
+  to { transform: rotate(var(--angle)) scale(1.28); }
+}
+
+#overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: #123d2780;
+  backdrop-filter: blur(4px);
+}
+
+#overlay[hidden] { display: none; }
+
+.dialog {
+  width: min(100%, 350px);
+  padding: 25px 19px;
+  text-align: center;
+  border: 3px solid white;
+  border-radius: 25px;
+  background: var(--paper);
+  box-shadow: 0 12px 35px #00330d55;
+  animation: pop-in .35s ease-out;
+}
+
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(.8) translateY(12px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.big-clover { font-size: 47px; }
+
+.dialog h2 {
+  margin: 5px 0 10px;
+  font-size: 32px;
+  color: #218444;
+}
+
+.dialog p {
+  margin: 8px 0 16px;
+  color: #58755b;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.result-time {
+  display: block;
+  margin: 5px 0 17px;
+  font-size: 30px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.action {
+  padding: 12px 21px;
+  border: 0;
+  border-radius: 999px;
+  color: white;
+  background: linear-gradient(135deg, #46b960, #187b39);
+  box-shadow: 0 4px 0 #11602c;
+  font-weight: 800;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.action:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #11602c;
+}
+
+.controls {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 13px;
+}
+
+.hint-button, .restart-button {
+  border: 2px solid white;
+  border-radius: 15px;
+  padding: 11px 14px;
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.hint-button {
+  flex: 1;
+  color: #245c35;
+  background: #fffdf1;
+}
+
+.restart-button {
+  color: #245c35;
+  background: #effad9;
+}
+
+button:disabled {
+  opacity: .55;
+  cursor: default;
+}
+
+#confetti {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.confetti-piece {
+  position: absolute;
+  top: -15px;
+  width: 8px;
+  height: 12px;
+  border-radius: 2px;
+  animation: fall var(--duration) linear var(--delay) forwards;
+}
+
+@keyframes fall {
+  to {
+    transform: translate(var(--drift), 850px) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+.note {
+  margin: 13px 4px 0;
+  color: #386643;
+  font-size: 12px;
+  text-align: center;
+  line-height: 1.7;
+}
+
+@media (max-width: 540px) {
+  .app { padding: 10px 7px 22px; }
+  header { padding: 17px 7px; border-radius: 19px; }
+  .stats { gap: 4px; }
+  .stat { padding: 10px 2px; border-radius: 12px; }
+  .stat-label { font-size: 10px; }
+  #board { border-width: 3px; border-radius: 17px; }
+  #field { padding: 4px; }
+  .controls { gap: 7px; }
+  .hint-button, .restart-button { padding: 10px 8px; font-size: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
+}
+</style>
+</head>
+<body>
+<main class="app">
+  <header>
+    <h1>🍀 四つ葉のクローバー探し</h1>
+    <p class="subtitle">
+      たくさんの三つ葉の中から、たった1つの四つ葉を見つけよう！
+    </p>
+  </header>
+
+  <section class="stats" aria-label="ゲーム情報">
+    <div class="stat">
+      <span class="stat-label">🏆 レベル</span>
+      <span class="stat-value" id="level">1 / 30</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">🌿 クローバー</span>
+      <span class="stat-value" id="count">60 枚</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">⏱ タイム</span>
+      <span class="stat-value" id="timer">00:00.0</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">👑 ベスト</span>
+      <span class="stat-value" id="best">--:--.-</span>
+    </div>
+  </section>
+
+  <p id="message" aria-live="polite">
+    🍀 四つ葉を見つけよう！ 葉の枚数だけが違うよ。
+  </p>
+
+  <section id="board" aria-label="クローバーの草原">
+    <div id="grass"></div>
+    <div id="field"></div>
+    <div id="confetti"></div>
+
+    <div id="overlay" hidden>
+      <div class="dialog" role="dialog" aria-modal="true"
+           aria-labelledby="resultTitle">
+        <div class="big-clover" id="resultEmoji">🍀</div>
+        <h2 id="resultTitle">見つけた！</h2>
+        <p id="resultText">幸運の四つ葉を発見！</p>
+        <span class="stat-label">今回のタイム</span>
+        <span class="result-time" id="finalTime">00:00.0</span>
+        <p id="recordText"></p>
+        <button class="action" id="nextButton">次のレベルへ ➜</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="controls">
+    <button class="hint-button" id="hintButton">💡 ヒント（+10秒）</button>
+    <button class="restart-button" id="restartButton">↻ 最初から</button>
+  </div>
+
+  <p class="note">
+    四つ葉も三つ葉も同じ緑色。形をよく見て探してね。<br>
+    クリアするほど数が増え、クローバーは小さくなります。
+  </p>
+</main>
+
+<script>
+(() => {
+  "use strict";
+
+  // ===== 難易度設定 =====
+  const MAX_LEVEL = 30;
+  const START_COUNT = 60;
+  const ADD_PER_LEVEL = 20;
+  const MAX_COUNT = 640;
+  const START_SIZE = 36;
+  const MIN_SIZE = 17;
+  const HINT_PENALTY_MS = 10000;
+
+  const $ = id => document.getElementById(id);
+
+  const board = $("board");
+  const field = $("field");
+  const timerEl = $("timer");
+  const bestEl = $("best");
+  const countEl = $("count");
+  const levelEl = $("level");
+  const messageEl = $("message");
+  const overlay = $("overlay");
+  const confetti = $("confetti");
+  const hintButton = $("hintButton");
+  const nextButton = $("nextButton");
+
+  const confettiColors = [
+    "#ffdf69", "#ff8ca1", "#fff5a6", "#a7e9ff",
+    "#ffffff", "#ffc36b", "#e8a5ff", "#b4f27b"
+  ];
+
+  let level = 1;
+  let targetButton = null;
+  let buttons = [];
+  let startTime = 0;
+  let penaltyMs = 0;
+  let timerInterval = null;
+  let cleared = false;
+  let hintUsed = false;
+  let resizeTimer = null;
+
+  // ===== 記録の保存 =====
+  // ベストタイムはブラウザ内に保存されます。
+  // ストレージが使えない環境でもゲーム自体は遊べます。
+  function loadRecords() {
+    try {
+      return JSON.parse(localStorage.getItem("cloverBestTimes") || "{}");
+    } catch {
+      return {};
+    }
+  }
+
+  let records = loadRecords();
+
+  function saveRecords() {
+    try {
+      localStorage.setItem("cloverBestTimes", JSON.stringify(records));
+    } catch {
+      // 保存できなくてもゲームを続行
+    }
+  }
+
+  function bestForCurrentLevel() {
+    return records[level] ?? null;
+  }
+
+  // ===== 時間表示 =====
+  function formatTime(ms) {
+    const t = Math.floor(Math.max(0, ms) / 100);
+    const minutes = Math.floor(t / 600);
+    const seconds = Math.floor((t % 600) / 10);
+    const tenths = t % 10;
+
+    return String(minutes).padStart(2, "0") + ":" +
+      String(seconds).padStart(2, "0") + "." + tenths;
+  }
+
+  function currentTime() {
+    return performance.now() - startTime + penaltyMs;
+  }
+
+  function updateTimer() {
+    if (!cleared) {
+      timerEl.textContent = formatTime(currentTime());
+    }
+  }
+
+  function updateStats() {
+    levelEl.textContent = `${level} / ${MAX_LEVEL}`;
+    countEl.textContent = countForLevel() + " 枚";
+    const best = bestForCurrentLevel();
+    bestEl.textContent = best == null ? "--:--.-" : formatTime(best);
+  }
+
+  // ===== レベル別の難易度 =====
+  function countForLevel() {
+    return Math.min(
+      START_COUNT + (level - 1) * ADD_PER_LEVEL,
+      MAX_COUNT
+    );
+  }
+
+  function sizeForLevel() {
+    return Math.max(
+      MIN_SIZE,
+      START_SIZE - Math.floor((level - 1) * 0.65)
+    );
+  }
+
+  // ===== 配置をランダムにする =====
+  function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  }
+
+  // ===== 同じデザインのクローバーをSVGで描画 =====
+  // 葉の形・色・茎は共通。葉の数だけを3枚と4枚で変えます。
+  function createCloverSVG(isFourLeaf) {
+    const ns = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("viewBox", "0 0 100 100");
+    svg.setAttribute("aria-hidden", "true");
+
+    const defs = document.createElementNS(ns, "defs");
+    const gradient = document.createElementNS(ns, "linearGradient");
+    gradient.setAttribute("id", "leaf-gradient");
+    gradient.setAttribute("x1", "0%");
+    gradient.setAttribute("y1", "0%");
+    gradient.setAttribute("x2", "100%");
+    gradient.setAttribute("y2", "100%");
+
+    const stop1 = document.createElementNS(ns, "stop");
+    stop1.setAttribute("offset", "0%");
+    stop1.setAttribute("stop-color", "#75c95c");
+
+    const stop2 = document.createElementNS(ns, "stop");
+    stop2.setAttribute("offset", "100%");
+    stop2.setAttribute("stop-color", "#278c43");
+
+    gradient.append(stop1, stop2);
+    defs.appendChild(gradient);
+    svg.appendChild(defs);
+
+    // 茎はすべて同じ形
+    const stem = document.createElementNS(ns, "path");
+    stem.setAttribute("d", "M50 48 Q49 65 56 88");
+    stem.setAttribute("fill", "none");
+    stem.setAttribute("stroke", "#27783a");
+    stem.setAttribute("stroke-width", "5");
+    stem.setAttribute("stroke-linecap", "round");
+    svg.appendChild(stem);
+
+    // 全クローバー共通のハート型の葉
+    const leafPath =
+      "M50 51 C43 45 26 39 28 27 " +
+      "C30 15 44 17 50 29 " +
+      "C56 17 70 15 72 27 " +
+      "C74 39 57 45 50 51 Z";
+
+    const leafCount = isFourLeaf ? 4 : 3;
+
+    for (let i = 0; i < leafCount; i++) {
+      const angle = i * 360 / leafCount;
+      const leaf = document.createElementNS(ns, "path");
+      leaf.setAttribute("d", leafPath);
+      leaf.setAttribute("fill", "url(#leaf-gradient)");
+      leaf.setAttribute("stroke", "#287b3d");
+      leaf.setAttribute("stroke-width", "1.5");
+      leaf.setAttribute("stroke-linejoin", "round");
+      leaf.setAttribute(
+        "transform",
+        `rotate(${angle} 50 50)`
+      );
+      svg.appendChild(leaf);
+    }
+
+    // 葉の付け根を自然に見せる小さな円
+    const center = document.createElementNS(ns, "circle");
+    center.setAttribute("cx", "50");
+    center.setAttribute("cy", "50");
+    center.setAttribute("r", "3");
+    center.setAttribute("fill", "#368f42");
+    svg.appendChild(center);
+
+    return svg;
+  }
+
+  function makeClover(isTarget, cellSize) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "clover";
+    button.setAttribute(
+      "aria-label",
+      isTarget ? "四つ葉を探す" : "三つ葉"
+    );
+    button.style.width = cellSize + "px";
+    button.style.height = cellSize + "px";
+    button.style.setProperty(
+      "--angle",
+      (Math.random() * 50 - 25) + "deg"
+    );
+
+    button.appendChild(createCloverSVG(isTarget));
+
+    button.addEventListener("click", () => {
+      if (cleared) return;
+      if (isTarget) win(button);
+    });
+
+    return button;
+  }
+
+  function buildField() {
+    field.replaceChildren();
+    confetti.replaceChildren();
+    buttons = [];
+    targetButton = null;
+
+    const total = countForLevel();
+    const baseSize = sizeForLevel();
+
+    // 横幅に応じて列数を調整。小さな画面でも収まる配置。
+    const availableWidth = Math.max(240, board.clientWidth - 10);
+    const columns = Math.max(
+      5,
+      Math.floor(availableWidth / (baseSize + 2))
+    );
+    const cellSize = availableWidth / columns;
+    const rows = Math.ceil(total / columns);
+
+    field.style.gridTemplateColumns = `repeat(${columns}, minmax(0, 1fr))`;
+    field.style.gridAutoRows = cellSize + "px";
+
+    // 数が増えたら草原も縦に広がるので、押し分けやすい
+    const fieldHeight = rows * cellSize + 14;
+    board.style.height = Math.max(
+      440,
+      fieldHeight + 10
+    ) + "px";
+
+    const order = shuffle(
+      Array.from({ length: total }, (_, i) => i)
+    );
+    const targetIndex = Math.floor(Math.random() * total);
+
+    for (let i = 0; i < total; i++) {
+      const isTarget = order[i] === targetIndex;
+      const button = makeClover(isTarget, cellSize);
+
+      // わずかな回転や大きさの違いで自然な草原にする
+      button.style.opacity = (0.88 + Math.random() * 0.12).toFixed(2);
+
+      if (isTarget) targetButton = button;
+      buttons.push(button);
+      field.appendChild(button);
+    }
+
+    updateStats();
+  }
+
+  // ===== ヒント：一瞬だけ対象を光らせる。10秒のペナルティ =====
+  function useHint() {
+    if (cleared || hintUsed || !targetButton) return;
+
+    hintUsed = true;
+    penaltyMs += HINT_PENALTY_MS;
+    hintButton.disabled = true;
+    hintButton.textContent = "💡 ヒント使用済み";
+    messageEl.textContent = "✨ 四つ葉が一瞬光ったよ！ 10秒加算";
+
+    targetButton.classList.add("hinting");
+    updateTimer();
+
+    setTimeout(() => {
+      if (targetButton) targetButton.classList.remove("hinting");
+      if (!cleared) {
+        messageEl.textContent = "🍀 形の違いをよく見て探そう！";
+      }
+    }, 1600);
+  }
+
+  // ===== 紙吹雪 =====
+  function celebrate() {
+    confetti.replaceChildren();
+
+    for (let i = 0; i < 110; i++) {
+      const piece = document.createElement("span");
+      piece.className = "confetti-piece";
+      piece.style.left = Math.random() * 100 + "%";
+      piece.style.backgroundColor =
+        confettiColors[Math.floor(Math.random() * confettiColors.length)];
+      piece.style.setProperty(
+        "--duration",
+        (2 + Math.random() * 2.5) + "s"
+      );
+      piece.style.setProperty(
+        "--delay",
+        (Math.random() * .8) + "s"
+      );
+      piece.style.setProperty(
+        "--drift",
+        (Math.random() * 180 - 90) + "px"
+      );
+      confetti.appendChild(piece);
+    }
+  }
+
+  // ===== クリア =====
+  function win(button) {
+    if (cleared) return;
+    cleared = true;
+
+    const time = currentTime();
+    clearInterval(timerInterval);
+    timerInterval = null;
+
+    timerEl.textContent = formatTime(time);
+    $("finalTime").textContent = formatTime(time);
+
+    button.classList.add("found");
+    buttons.forEach(b => b.disabled = true);
+
+    const previousBest = bestForCurrentLevel();
+    const newRecord = previousBest == null || time < previousBest;
+
+    if (newRecord) {
+      records[level] = time;
+      saveRecords();
+    }
+
+    bestEl.textContent = formatTime(records[level]);
+
+    $("resultTitle").textContent =
+      level === MAX_LEVEL ? "全レベル制覇！" : "見つけた！";
+
+    $("resultText").textContent =
+      level === MAX_LEVEL
+        ? "おめでとう！ 最高難易度までクリアしました！"
+        : `レベル ${level} クリア！ 次はさらに難しくなるよ。`;
+
+    $("recordText").textContent = newRecord
+      ? "🏆 このレベルのベスト記録を更新！"
+      : "🌱 自己ベストを目指して次へ！";
+
+    nextButton.textContent =
+      level === MAX_LEVEL ? "もう一度レベル1から" : "次のレベルへ ➜";
+
+    messageEl.textContent =
+      level === MAX_LEVEL
+        ? "🎉 全30レベル制覇！ おめでとう！"
+        : `🎉 レベル ${level} クリア！ おめでとう！`;
+
+    overlay.hidden = false;
+    celebrate();
+    nextButton.focus();
+  }
+
+  // ===== レベル開始 =====
+  function startLevel() {
+    clearInterval(timerInterval);
+    timerInterval = null;
+
+    cleared = false;
+    hintUsed = false;
+    penaltyMs = 0;
+    overlay.hidden = true;
+    timerEl.textContent = "00:00.0";
+    hintButton.disabled = false;
+    hintButton.textContent = "💡 ヒント（+10秒）";
+
+    messageEl.textContent = level === 1
+      ? "🍀 四つ葉を見つけよう！ 葉の枚数だけが違うよ。"
+      : `🌟 レベル ${level}！ ${countForLevel()} 枚から探そう！`;
+
+    buildField();
+    startTime = performance.now();
+    timerInterval = setInterval(updateTimer, 100);
+  }
+
+  nextButton.addEventListener("click", () => {
+    if (level >= MAX_LEVEL) {
+      level = 1;
+    } else {
+      level++;
+    }
+    startLevel();
+  });
+
+  hintButton.addEventListener("click", useHint);
+
+  $("restartButton").addEventListener("click", () => {
+    level = 1;
+    startLevel();
+  });
+
+  // 画面サイズが変わったら配置を再調整
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      if (!cleared) buildField();
+    }, 200);
+  });
+
+  startLevel();
+})();
+</script>
+</body>
+</html>
